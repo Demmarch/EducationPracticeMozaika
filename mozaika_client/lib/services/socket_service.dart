@@ -21,21 +21,20 @@ class SocketService {
   Future<Map<String, dynamic>> sendRequest(String action, [Map<String, dynamic>? data]) async {
     Socket? socket;
     try {
-      // 1. Подключаемся
+      // Подключаемся
       socket = await Socket.connect(serverIp, serverPort, timeout: const Duration(seconds: 5));
       
-      // 2. Формируем JSON
+      // Формируем JSON
       final request = {
         'action': action,
         'data': data ?? {}
       };
       
-      // 3. Отправляем
-      socket.write(jsonEncode(request));
+      // Отправляем
+      socket.write(jsonEncode(request) + '\n');
       await socket.flush();
 
-      // 4. Читаем ответ
-      // Слушаем поток данных. Как только придут данные - собираем и парсим.
+      // Читаем ответ
       final completer = Completer<Map<String, dynamic>>();
       final buffer = StringBuffer();
 
@@ -43,22 +42,35 @@ class SocketService {
         (List<int> event) {
           final chunk = utf8.decode(event);
           buffer.write(chunk);
+
+          if (buffer.toString().endsWith('\n')) {
+            try {
+              final jsonString = buffer.toString().trim();
+              if (jsonString.isNotEmpty) {
+                final response = jsonDecode(jsonString);
+                
+                if (!completer.isCompleted) {
+                  completer.complete(response);
+                }
+                
+                socket?.destroy(); 
+              }
+            } catch (e) {
+              if (!completer.isCompleted) {
+                completer.completeError("Ошибка парсинга JSON: $e");
+              }
+            }
+          }
         },
         onDone: () {
-          // Когда сервер закрыл соединение или закончил передачу
-          try {
-            if (buffer.isNotEmpty) {
-              final response = jsonDecode(buffer.toString());
-              completer.complete(response);
-            } else {
-              completer.completeError("Пустой ответ от сервера");
-            }
-          } catch (e) {
-            completer.completeError("Ошибка парсинга JSON: $e");
+          if (!completer.isCompleted) {
+            completer.completeError("Соединение закрыто без ответа");
           }
         },
         onError: (error) {
-          completer.completeError(error);
+          if (!completer.isCompleted) {
+            completer.completeError(error);
+          }
         },
       );
 
