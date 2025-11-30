@@ -6,4 +6,18 @@ CONFIG -= app_bundle
 
 DEFINES += QT_DEPRECATED_WARNINGS
 
-SOURCES += main.cpp
+SOURCES += \
+    ClientHandler.cpp \
+    DbManager.cpp \
+    MyTcpServer.cpp \
+    ProductionCalculator.cpp \
+    main.cpp \
+
+# Заголовки
+
+HEADERS += \
+    ClientHandler.h \
+    DbManager.h \
+    Entities.h \
+    MyTcpServer.h \
+    ProductionCalculator.h

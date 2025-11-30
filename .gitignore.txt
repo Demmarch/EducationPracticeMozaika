@@ -1,8 +1,0 @@
-.qtcreator/
-/build/
-*.o
-*.docx
-*.user*
-MozaikaServer/*.user*
-MozaikaServer/.qtcreator/
-MozaikaServer/build/
