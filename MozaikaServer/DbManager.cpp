@@ -156,7 +156,7 @@ UserInfo DbManager::authorizeUser(const QString &login, const QString &password)
     info.isAuthenticated = false;
     QSqlQuery query;
 
-    // 1. Staff
+    // Staff
     query.prepare("SELECT id, surname, name, position_id FROM staff "
                   "WHERE login = :login AND password = crypt(:pass, password)");
     query.bindValue(":login", login);
@@ -170,7 +170,7 @@ UserInfo DbManager::authorizeUser(const QString &login, const QString &password)
         return info;
     }
 
-    // 2. Partner
+    // Partner
     query.prepare("SELECT id, partner_name FROM partner "
                   "WHERE login = :login AND password = crypt(:pass, password)");
     query.bindValue(":login", login);
@@ -186,7 +186,6 @@ UserInfo DbManager::authorizeUser(const QString &login, const QString &password)
     return info;
 }
 
-// === Регистрация Партнера (Принимает Partner) ===
 bool DbManager::registerPartner(const Partner &p) {
     QSqlQuery query;
     query.prepare("INSERT INTO partner (partner_name, director_name, email, phone, "

@@ -18,7 +18,7 @@ ClientHandler::ClientHandler(qintptr socketDescriptor, QObject *parent)
 void ClientHandler::onReadyRead()
 {
     // Читаем все данные (для простоты считаем, что JSON приходит целиком)
-    QByteArray data = m_socket->readAll();
+    QByteArray data = m_socket->readAll().trimmed();
     QJsonDocument doc = QJsonDocument::fromJson(data);
     QJsonObject request = doc.object();
     QJsonObject response;
@@ -72,7 +72,7 @@ void ClientHandler::onReadyRead()
         response["status"] = "success";
         response["data"] = DbManager::instance().getSuppliersForMaterial(matId);
     }
-    if (action == "LOGIN") {
+    else if (action == "LOGIN") {
         QJsonObject params = request["data"].toObject();
         QString login = params["login"].toString();
         QString pass = params["password"].toString();
