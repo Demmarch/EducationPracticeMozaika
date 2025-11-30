@@ -1,0 +1,5 @@
+.qtcreator/
+build/
+*.o
+*.docx
+*.user*
