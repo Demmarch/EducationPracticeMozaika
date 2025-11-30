@@ -1,0 +1,4 @@
+id,material_type_id,material_name,unit,count_in_pack,min_count,cost,description,image,current_quantity
+1,1,Белая глина,кг,50,100,500.00,Высококачественная глина,clay.jpg,5000
+2,3,Красный пигмент,л,5,10,1200.50,Стойкий краситель,red_pig.jpg,50
+3,4,Коробка картонная,шт,100,200,15.00,Для плитки 30х30,box.jpg,1000
