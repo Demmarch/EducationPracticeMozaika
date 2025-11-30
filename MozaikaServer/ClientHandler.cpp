@@ -129,7 +129,10 @@ void ClientHandler::onReadyRead()
 void ClientHandler::sendJson(const QJsonObject &json)
 {
     QJsonDocument doc(json);
-    m_socket->write(doc.toJson());
+    QByteArray data = doc.toJson(QJsonDocument::Compact);
+    // Добавляем символ новой строки как разделитель конца сообщения. Без этого клиентское приложение не поймет, что это конец
+    data.append('\n');
+    m_socket->write(data);
     m_socket->flush();
 }
 
