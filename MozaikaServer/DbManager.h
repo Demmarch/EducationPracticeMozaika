@@ -42,8 +42,8 @@ public:
     bool registerEmployee(const Staff &staff);
 
     // Обновление данных сотрудника/партнера
-    bool updateDataEmployee(const Staff &staff);
-    bool updateDataPartner(const Partner &partner);
+    bool updateDataEmployee(const QJsonObject &data);
+    bool updateDataPartner(const QJsonObject &data);
     // Обновляет: login, password, passport_details
     bool updateStaffSensitiveData(const QJsonObject &data);
     // Обновляет: login, password, inn

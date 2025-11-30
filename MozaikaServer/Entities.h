@@ -36,7 +36,6 @@ struct Material {
         return json;
     }
 
-    // Десериализация (JSON -> Struct)
     static Material fromJson(const QJsonObject &json) {
         Material m;
         m.id = json["id"].toInt();
@@ -119,7 +118,7 @@ struct Staff {
     int positionId;         // SQL: position_id
     QString positionName;   // Из JOIN staff_position
     QDate birthDate;        // SQL: birth_date
-    QByteArray passportDetails; // SQL: passport_details (зашифровано)
+    QString passportDetails; // SQL: passport_details
     QString bankAccount;    // SQL: bank_account
     QString familyStatus;   // SQL: family_status
     QString healthInfo;     // SQL: health_info
@@ -136,7 +135,7 @@ struct Staff {
         json["position_id"] = positionId;
         json["position_name"] = positionName;
         json["birth_date"] = birthDate.toString(Qt::ISODate);
-        json["passport_details"] = QString(passportDetails.toBase64());
+        json["passport_details"] = passportDetails;
         json["bank_account"] = bankAccount;
         json["family_status"] = familyStatus;
         json["health_info"] = healthInfo;
@@ -158,7 +157,7 @@ struct Staff {
         // String -> QDate
         s.birthDate = QDate::fromString(json["birth_date"].toString(), Qt::ISODate);
         // Base64 String -> QByteArray
-        s.passportDetails = QByteArray::fromBase64(json["passport_details"].toString().toUtf8());
+        s.passportDetails = json["passport_details"].toString();
 
         s.bankAccount = json["bank_account"].toString();
         s.familyStatus = json["family_status"].toString();

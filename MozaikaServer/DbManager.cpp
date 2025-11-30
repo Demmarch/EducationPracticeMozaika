@@ -242,24 +242,40 @@ bool DbManager::registerEmployee(const Staff &staff) {
     return true;
 }
 
-bool DbManager::updateDataEmployee(const Staff &staff) {
-    QSqlQuery query;
-    query.prepare("UPDATE staff SET surname=:surname, name=:name, patronymic=:patr, "
-                  "position_id=:pos_id, birth_date=:bdate, bank_account=:acc, "
-                  "phone=:phone, login=:login, family_status=:fam, health_info=:health "
-                  "WHERE id=:id");
+bool DbManager::updateDataEmployee(const QJsonObject &data) {
+    if (!data.contains("id")) return false;
+    int id = data["id"].toInt();
 
-    query.bindValue(":id", staff.id);
-    query.bindValue(":surname", staff.surname);
-    query.bindValue(":name", staff.name);
-    query.bindValue(":patr", staff.patronymic);
-    query.bindValue(":pos_id", staff.positionId);
-    query.bindValue(":bdate", staff.birthDate);
-    query.bindValue(":acc", staff.bankAccount);
-    query.bindValue(":phone", staff.phone);
-    query.bindValue(":login", staff.login);
-    query.bindValue(":fam", staff.familyStatus);
-    query.bindValue(":health", staff.healthInfo);
+    QStringList setClauses;
+
+    // Проверяем наличие полей в JSON перед добавлением в SQL
+    if (data.contains("surname"))       setClauses << "surname = :surname";
+    if (data.contains("name"))          setClauses << "name = :name";
+    if (data.contains("patronymic"))    setClauses << "patronymic = :patr";
+    if (data.contains("position_id"))   setClauses << "position_id = :pos_id";
+    if (data.contains("birth_date"))    setClauses << "birth_date = :bdate";
+    if (data.contains("bank_account"))  setClauses << "bank_account = :acc";
+    if (data.contains("phone"))         setClauses << "phone = :phone";
+    if (data.contains("family_status")) setClauses << "family_status = :fam";
+    if (data.contains("health_info"))   setClauses << "health_info = :health";
+
+    if (setClauses.isEmpty()) return false;
+
+    QString queryString = "UPDATE staff SET " + setClauses.join(", ") + " WHERE id = :id";
+    QSqlQuery query;
+    query.prepare(queryString);
+    query.bindValue(":id", id);
+
+    // Биндим только то, что есть
+    if (data.contains("surname"))       query.bindValue(":surname", data["surname"].toString());
+    if (data.contains("name"))          query.bindValue(":name", data["name"].toString());
+    if (data.contains("patronymic"))    query.bindValue(":patr", data["patronymic"].toString());
+    if (data.contains("position_id"))   query.bindValue(":pos_id", data["position_id"].toInt());
+    if (data.contains("birth_date"))    query.bindValue(":bdate", data["birth_date"].toString());
+    if (data.contains("bank_account"))  query.bindValue(":acc", data["bank_account"].toString());
+    if (data.contains("phone"))         query.bindValue(":phone", data["phone"].toString());
+    if (data.contains("family_status")) query.bindValue(":fam", data["family_status"].toString());
+    if (data.contains("health_info"))   query.bindValue(":health", data["health_info"].toString());
 
     if (!query.exec()) {
         qDebug() << "Update Employee Error:" << query.lastError().text();
@@ -268,24 +284,42 @@ bool DbManager::updateDataEmployee(const Staff &staff) {
     return true;
 }
 
-bool DbManager::updateDataPartner(const Partner &partner) {
-    QSqlQuery query;
-    query.prepare("UPDATE partner SET partner_name=:p_name, director_name=:d_name, "
-                  "email=:email, phone=:phone, legal_address=:addr, partner_type_id=:type_id, "
-                  "login=:login, rating=:rating, logo=:logo, sales_locations=:loc "
-                  "WHERE id=:id");
+bool DbManager::updateDataPartner(const QJsonObject &data) {
+    if (!data.contains("id")) return false;
+    int id = data["id"].toInt();
 
-    query.bindValue(":id", partner.id);
-    query.bindValue(":p_name", partner.name);
-    query.bindValue(":d_name", partner.director);
-    query.bindValue(":email", partner.email);
-    query.bindValue(":phone", partner.phone);
-    query.bindValue(":addr", partner.legalAddress);
-    query.bindValue(":type_id", partner.typeId);
-    query.bindValue(":login", partner.login);
-    query.bindValue(":rating", partner.rating);
-    query.bindValue(":logo", partner.logo);
-    query.bindValue(":loc", partner.salesLocations);
+    QStringList setClauses;
+
+    // Проверяем наличие полей в JSON перед добавлением в SQL
+    if (data.contains("partner_name"))      setClauses << "partner_name = :p_name";
+    if (data.contains("director_name"))     setClauses << "director_name = :d_name";
+    if (data.contains("email"))             setClauses << "email = :email";
+    if (data.contains("phone"))             setClauses << "phone = :phone";
+    if (data.contains("legal_address"))     setClauses << "legal_address = :addr";
+    if (data.contains("partner_type_id"))   setClauses << "partner_type_id = :type_id";
+    if (data.contains("login"))             setClauses << "login = :login";
+    if (data.contains("rating"))            setClauses << "rating = :rating";
+    if (data.contains("logo"))              setClauses << "logo = :logo";
+    if (data.contains("sales_locations"))   setClauses << "sales_locations = :loc";
+
+    if (setClauses.isEmpty()) return false;
+
+    QString queryString = "UPDATE partner SET " + setClauses.join(", ") + " WHERE id = :id";
+    QSqlQuery query;
+    query.prepare(queryString);
+    query.bindValue(":id", id);
+
+    // Биндим только существующие значения
+    if (data.contains("partner_name"))      query.bindValue(":p_name", data["partner_name"].toString());
+    if (data.contains("director_name"))     query.bindValue(":d_name", data["director_name"].toString());
+    if (data.contains("email"))             query.bindValue(":email", data["email"].toString());
+    if (data.contains("phone"))             query.bindValue(":phone", data["phone"].toString());
+    if (data.contains("legal_address"))     query.bindValue(":addr", data["legal_address"].toString());
+    if (data.contains("partner_type_id"))   query.bindValue(":type_id", data["partner_type_id"].toInt());
+    if (data.contains("login"))             query.bindValue(":login", data["login"].toString());
+    if (data.contains("rating"))            query.bindValue(":rating", data["rating"].toInt());
+    if (data.contains("logo"))              query.bindValue(":logo", data["logo"].toString());
+    if (data.contains("sales_locations"))   query.bindValue(":loc", data["sales_locations"].toString());
 
     if (!query.exec()) {
         qDebug() << "Update Partner Error:" << query.lastError().text();

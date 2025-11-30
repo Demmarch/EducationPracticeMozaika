@@ -101,13 +101,11 @@ void ClientHandler::onReadyRead()
         response["status"] = success ? "success" : "error";
     }
     else if (action == "UPDATE_EMPLOYEE_DATA") {
-        Staff s = Staff::fromJson(requestData);
-        bool success = DbManager::instance().updateDataEmployee(s);
+        bool success = DbManager::instance().updateDataEmployee(requestData);
         response["status"] = success ? "success" : "error";
     }
     else if (action == "UPDATE_PARTNER_DATA") {
-        Partner p = Partner::fromJson(requestData);
-        bool success = DbManager::instance().updateDataPartner(p);
+        bool success = DbManager::instance().updateDataPartner(requestData);
         response["status"] = success ? "success" : "error";
     }
     else if (action == "UPDATE_STAFF_SECURITY") {
