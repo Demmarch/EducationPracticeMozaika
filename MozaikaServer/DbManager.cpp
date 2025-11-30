@@ -293,3 +293,83 @@ bool DbManager::updateDataPartner(const Partner &partner) {
     }
     return true;
 }
+
+bool DbManager::updateStaffSensitiveData(const QJsonObject &data)
+{
+    if (!data.contains("id")) return false;
+    int id = data["id"].toInt();
+    QStringList setClauses;
+
+    // Логин
+    if (data.contains("login") && !data["login"].toString().isEmpty()) {
+        setClauses << "login = :login";
+    }
+    // Пароль
+    if (data.contains("password") && !data["password"].toString().isEmpty()) {
+        setClauses << "password = crypt(:password, gen_salt('bf'))";
+    }
+    // Паспорт
+    if (data.contains("passport_details") && !data["passport_details"].toString().isEmpty()) {
+        setClauses << "passport_details = pgp_sym_encrypt(:passport_details, 'Mozaika2025')";
+    }
+
+    if (setClauses.isEmpty()) return true; // Ничего обновлять не надо
+
+    QString queryString = "UPDATE staff SET " + setClauses.join(", ") + " WHERE id = :id";
+    QSqlQuery query;
+    query.prepare(queryString);
+    query.bindValue(":id", id);
+
+    if (data.contains("login"))
+        query.bindValue(":login", data["login"].toString());
+    if (data.contains("password"))
+        query.bindValue(":password", data["password"].toString());
+    if (data.contains("passport_details"))
+        query.bindValue(":passport_details", data["passport_details"].toString());
+
+    if (!query.exec()) {
+        qDebug() << "Update Staff Sensitive Error:" << query.lastError().text();
+        return false;
+    }
+    return true;
+}
+
+bool DbManager::updatePartnerSensitiveData(const QJsonObject &data)
+{
+    if (!data.contains("id")) return false;
+    int id = data["id"].toInt();
+    QStringList setClauses;
+
+    // Логин
+    if (data.contains("login") && !data["login"].toString().isEmpty()) {
+        setClauses << "login = :login";
+    }
+    // Пароль
+    if (data.contains("password") && !data["password"].toString().isEmpty()) {
+        setClauses << "password = crypt(:password, gen_salt('bf'))";
+    }
+    // ИНН
+    if (data.contains("inn") && !data["inn"].toString().isEmpty()) {
+        setClauses << "inn = pgp_sym_encrypt(:inn, 'Mozaika2025')";
+    }
+
+    if (setClauses.isEmpty()) return true;
+
+    QString queryString = "UPDATE partner SET " + setClauses.join(", ") + " WHERE id = :id";
+    QSqlQuery query;
+    query.prepare(queryString);
+    query.bindValue(":id", id);
+
+    if (data.contains("login"))
+        query.bindValue(":login", data["login"].toString());
+    if (data.contains("password"))
+        query.bindValue(":password", data["password"].toString());
+    if (data.contains("inn"))
+        query.bindValue(":inn", data["inn"].toString());
+
+    if (!query.exec()) {
+        qDebug() << "Update Partner Sensitive Error:" << query.lastError().text();
+        return false;
+    }
+    return true;
+}

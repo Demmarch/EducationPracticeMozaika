@@ -110,6 +110,16 @@ void ClientHandler::onReadyRead()
         bool success = DbManager::instance().updateDataPartner(p);
         response["status"] = success ? "success" : "error";
     }
+    else if (action == "UPDATE_STAFF_SECURITY") {
+        bool success = DbManager::instance().updateStaffSensitiveData(requestData);
+        response["status"] = success ? "success" : "error";
+    }
+
+    // Ожидает JSON: { "id": 1, "password": "new_pass", "inn": "1234567890" }
+    else if (action == "UPDATE_PARTNER_SECURITY") {
+        bool success = DbManager::instance().updatePartnerSensitiveData(requestData);
+        response["status"] = success ? "success" : "error";
+    }
     else {
         response["status"] = "error";
         response["message"] = "Неизвестная команда";
