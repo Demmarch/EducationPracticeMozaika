@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../models/user_model.dart';
 import '../services/socket_service.dart';
 import '../utils/styles.dart';
-// Импорт экрана, который мы создадим следующим (список материалов)
 import 'material_list_screen.dart'; 
 
 class LoginScreen extends StatefulWidget {

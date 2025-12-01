@@ -25,6 +25,8 @@ public:
 
     // Получение списка материалов (Модуля 2)
     QList<Material> getAllMaterials();
+    // Продуктов
+    QList<Product> getAllProducts();
 
     // Для выпадающего списка типов (Модуль 3)
     QJsonArray getMaterialTypes();

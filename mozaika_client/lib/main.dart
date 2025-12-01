@@ -29,7 +29,6 @@ class MozaikaApp extends StatelessWidget {
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary),
       ),
-      // Пока поставим заглушку, на следующем шаге заменим на LoginScreen
       home: const LoginScreen(),
     );
   }

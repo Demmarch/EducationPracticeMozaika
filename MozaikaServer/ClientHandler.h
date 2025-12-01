@@ -19,6 +19,7 @@ private slots:
 
 private:
     QTcpSocket *m_socket;
+    QByteArray m_buffer;
     void sendJson(const QJsonObject &json);
 };
 

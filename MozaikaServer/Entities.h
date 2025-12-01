@@ -18,6 +18,7 @@ struct Material {
     double cost;
     QString description;
     QString image;
+    QString imageBase64;
     int currentQuantity;    // SQL: current_quantity
 
     QJsonObject toJson() const {
@@ -32,6 +33,7 @@ struct Material {
         json["cost"] = cost;
         json["description"] = description;
         json["image"] = image;
+        json["image_base64"] = imageBase64;
         json["current_quantity"] = currentQuantity;
         return json;
     }
@@ -49,6 +51,7 @@ struct Material {
         m.cost = json["cost"].toDouble();
         m.description = json["description"].toString();
         m.image = json["image"].toString();
+        m.imageBase64 = json["image_base64"].toString();
         m.currentQuantity = json["current_quantity"].toInt();
         return m;
     }
@@ -66,6 +69,7 @@ struct Partner {
     QString inn;            // SQL: inn (BYTEA, но храним как строку для UI)
     int rating;
     QString logo;
+    QString logoBase64;
     QString salesLocations; // SQL: sales_locations
     QString login;
     QString password;
@@ -83,6 +87,7 @@ struct Partner {
         json["inn"] = inn;
         json["rating"] = rating;
         json["logo"] = logo;
+        json["logoBase64"] = logoBase64;
         json["sales_locations"] = salesLocations;
         json["login"] = login;
         json["password"] = password;
@@ -103,6 +108,7 @@ struct Partner {
         p.inn = json["inn"].toString();
         p.rating = json["rating"].toInt();
         p.logo = json["logo"].toString();
+        p.logoBase64 = json["logo_base64"].toString();
         p.salesLocations = json["sales_locations"].toString();
         p.login = json["login"].toString();
         p.password = json["password"].toString();

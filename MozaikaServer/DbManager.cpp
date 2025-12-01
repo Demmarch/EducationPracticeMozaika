@@ -1,5 +1,59 @@
 #include "DbManager.h"
+
+#include <QDir>
+#include <QCoreApplication>
+#include <QFile>
+#include <QDateTime>
+
 #include "Entities.h"
+
+// Просто функции для работы с изображениями
+QString getImagesDir() {
+    QString path = QCoreApplication::applicationDirPath() + "/img";
+    QDir dir(path);
+    if (!dir.exists()) {
+        dir.mkpath(".");
+    }
+    return path;
+}
+
+// Сохранение Base64 в файл
+QString saveImageToDisk(const QString &base64Data, const QString &originalName) {
+    if (base64Data.isEmpty()) return "";
+
+    QString dirPath = getImagesDir();
+    // Генерируем уникальное имя, чтобы не было коллизий, или используем переданное
+    // Лучше сгенерировать уникальное, если это новый файл
+    QString extension = "jpg"; // По умолчанию, или парсить из originalName
+    if (originalName.contains(".")) extension = originalName.section('.', -1);
+
+    QString fileName = QString("material_%1.%2")
+                           .arg(QDateTime::currentMSecsSinceEpoch())
+                           .arg(extension);
+
+    QString fullPath = dirPath + "/" + fileName;
+
+    QFile file(fullPath);
+    if (file.open(QIODevice::WriteOnly)) {
+        file.write(QByteArray::fromBase64(base64Data.toUtf8()));
+        file.close();
+        return fileName; // Возвращаем только имя файла для БД
+    }
+    return "";
+}
+
+// Чтение файла в Base64
+QString loadImageFromDisk(const QString &fileName) {
+    if (fileName.isEmpty()) return "";
+
+    QString fullPath = getImagesDir() + "/" + fileName;
+    QFile file(fullPath);
+    if (file.open(QIODevice::ReadOnly)) {
+        QByteArray data = file.readAll();
+        return QString(data.toBase64());
+    }
+    return "";
+}
 
 DbManager::DbManager() {}
 
@@ -55,6 +109,7 @@ QList<Material> DbManager::getAllMaterials() {
             m.unit = query.value("unit").toString();
             m.countInPack = query.value("count_in_pack").toInt();
             m.image = query.value("image").toString();
+            m.imageBase64 = loadImageFromDisk(m.image);
             m.typeName = query.value("type_name").toString();
             m.typeId = query.value("material_type_id").toInt();
             m.description = query.value("description").toString();
@@ -67,8 +122,45 @@ QList<Material> DbManager::getAllMaterials() {
     return result;
 }
 
+QList<Product> DbManager::getAllProducts() {
+    QList<Product> result;
+    if (!m_db.isOpen()) return result;
+
+    QSqlQuery query;
+    // Объединяем product и product_type, чтобы получить название типа
+    query.prepare("SELECT p.id, p.article, p.product_name, p.min_cost_for_partner, "
+                  "p.image, pt.type_name "
+                  "FROM product p "
+                  "JOIN product_type pt ON p.product_type_id = pt.id "
+                  "ORDER BY p.product_name ASC");
+
+    if (query.exec()) {
+        while (query.next()) {
+            Product p;
+            p.id = query.value("id").toInt();
+            p.article = query.value("article").toString();
+            p.title = query.value("product_name").toString();
+            p.minCost = query.value("min_cost_for_partner").toDouble();
+            p.image = query.value("image").toString();
+            // Используем существующую функцию loadImageFromDisk из DbManager.cpp
+            p.imageBase64 = loadImageFromDisk(p.image);
+            p.type = query.value("type_name").toString();
+
+            result.append(p);
+        }
+    } else {
+        qDebug() << "SQL Error (getAllProducts):" << query.lastError().text();
+    }
+    return result;
+}
+
 // === Добавление материала (Принимает Material) ===
 bool DbManager::addMaterial(const Material &m) {
+    QString savedFileName = m.image;
+    if (!m.imageBase64.isEmpty()) {
+        savedFileName = saveImageToDisk(m.imageBase64, m.image);
+    }
+
     QSqlQuery query;
     query.prepare("INSERT INTO material (material_name, material_type_id, current_quantity, "
                   "unit, count_in_pack, min_count, cost, description, image) "
@@ -82,7 +174,7 @@ bool DbManager::addMaterial(const Material &m) {
     query.bindValue(":min", m.minCount);
     query.bindValue(":cost", m.cost);
     query.bindValue(":desc", m.description);
-    query.bindValue(":img", m.image);
+    query.bindValue(":img", savedFileName);
 
     if (!query.exec()) {
         qDebug() << "Insert error:" << query.lastError().text();
@@ -93,6 +185,12 @@ bool DbManager::addMaterial(const Material &m) {
 
 // === Обновление материала (Принимает Material) ===
 bool DbManager::updateMaterial(const Material &m) {
+    QString savedFileName = m.image;
+
+    // Если imageBase64 не пустой, значит пользователь загрузил новое фото
+    if (!m.imageBase64.isEmpty()) {
+        savedFileName = saveImageToDisk(m.imageBase64, m.image);
+    }
     QSqlQuery query;
     query.prepare("UPDATE material SET material_name = :name, material_type_id = :type_id, "
                   "current_quantity = :qty, unit = :unit, count_in_pack = :pack, "
@@ -108,7 +206,7 @@ bool DbManager::updateMaterial(const Material &m) {
     query.bindValue(":min", m.minCount);
     query.bindValue(":cost", m.cost);
     query.bindValue(":desc", m.description);
-    query.bindValue(":img", m.image);
+    query.bindValue(":img", savedFileName);
 
     if (!query.exec()) {
         qDebug() << "Update error:" << query.lastError().text();
@@ -144,7 +242,6 @@ QJsonArray DbManager::getSuppliersForMaterial(int materialId) {
             item["name"] = query.value("supplier_name").toString();
             item["type"] = query.value("supplier_type").toString();
             item["start_date"] = query.value("start_date").toDateTime().toString("dd.MM.yyyy");
-            item["rating"] = 5;
             result.append(item);
         }
     }

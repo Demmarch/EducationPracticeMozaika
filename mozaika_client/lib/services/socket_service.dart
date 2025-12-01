@@ -82,9 +82,6 @@ class SocketService {
         print("Socket Error: $e");
       }
       return {'status': 'error', 'message': 'Ошибка соединения: $e'};
-    } finally {
-      // Всегда закрываем сокет после операции
-      socket?.destroy();
     }
   }
 }

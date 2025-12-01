@@ -17,113 +17,139 @@ ClientHandler::ClientHandler(qintptr socketDescriptor, QObject *parent)
 
 void ClientHandler::onReadyRead()
 {
-    // Читаем все данные (для простоты считаем, что JSON приходит целиком)
-    QByteArray data = m_socket->readAll().trimmed();
-    QJsonDocument doc = QJsonDocument::fromJson(data);
-    QJsonObject request = doc.object();
-    QJsonObject response;
+    m_buffer.append(m_socket->readAll());
+    while (m_buffer.contains('\n')) {
+        int index = m_buffer.indexOf('\n');
 
-    QString action = request["action"].toString();
-    QJsonObject requestData = request["data"].toObject();
+        // Извлекаем одну полную строку (запрос)
+        QByteArray data = m_buffer.left(index).trimmed();
 
-    // Запрос списка материалов (Модуль 2)
-    if (action == "GET_MATERIALS") {
-        // Получаем список структур
-        QList<Material> materialsList = DbManager::instance().getAllMaterials();
+        // Удаляем обработанную часть из буфера (+1, чтобы удалить сам \n)
+        m_buffer.remove(0, index + 1);
 
-        // Конвертируем список структур в JSON Array
-        QJsonArray materialsArray;
-        for (const Material &m : materialsList) {
-            materialsArray.append(m.toJson());
+        if (data.isEmpty()) {
+            continue;
         }
 
-        response["status"] = "success";
-        response["data"] = materialsArray;
-    }
-    // Пример вызова расчетного метода (Модуль 4)
-    else if (action == "CALCULATE_PRODUCTION") {
-        QJsonObject params = request["data"].toObject();
-        int result = ProductionCalculator::calculateOutput(
-            params["prod_type"].toInt(),
-            params["mat_type"].toInt(),
-            params["mat_qty"].toInt(),
-            params["p1"].toDouble(),
-            params["p2"].toDouble()
-            );
-        response["status"] = (result != -1) ? "success" : "error";
-        response["result"] = result;
-    }
-    else if (action == "GET_MATERIAL_TYPES") {
-        response["status"] = "success";
-        response["data"] = DbManager::instance().getMaterialTypes();
-    }
-    else if (action == "ADD_MATERIAL") {
-        Material m = Material::fromJson(requestData);
-        bool success = DbManager::instance().addMaterial(m);
-        response["status"] = success ? "success" : "error";
-    }
-    else if (action == "UPDATE_MATERIAL") {
-        Material m = Material::fromJson(requestData);
-        bool success = DbManager::instance().updateMaterial(m);
-        response["status"] = success ? "success" : "error";
-    }
-    else if (action == "GET_SUPPLIERS") {
-        int matId = request["material_id"].toInt();
-        response["status"] = "success";
-        response["data"] = DbManager::instance().getSuppliersForMaterial(matId);
-    }
-    else if (action == "LOGIN") {
-        QJsonObject params = request["data"].toObject();
-        QString login = params["login"].toString();
-        QString pass = params["password"].toString();
+        // 3. Парсим JSON
+        QJsonParseError parseError;
+        QJsonDocument doc = QJsonDocument::fromJson(data, &parseError);
 
-        UserInfo info = DbManager::instance().authorizeUser(login, pass);
+        if (parseError.error != QJsonParseError::NoError) {
+            qDebug() << "JSON Error:" << parseError.errorString();
+            QJsonObject err;
+            err["status"] = "error";
+            err["message"] = "Ошибка парсинга JSON на сервере";
+            sendJson(err);
+            continue;
+        }
 
-        if (info.isAuthenticated) {
+        QJsonObject request = doc.object();
+        QJsonObject response;
+
+        QString action = request["action"].toString();
+        QJsonObject requestData = request["data"].toObject();
+
+        qDebug() << "Action received:" << action;
+        // Запрос списка материалов (Модуль 2)
+        if (action == "GET_MATERIALS") {
+            // Получаем список структур
+            QList<Material> materialsList = DbManager::instance().getAllMaterials();
+
+            // Конвертируем список структур в JSON Array
+            QJsonArray materialsArray;
+            for (const Material &m : materialsList) {
+                materialsArray.append(m.toJson());
+            }
+
             response["status"] = "success";
-            response["role"] = info.role;
-            response["user_id"] = info.id;
-            response["username"] = info.name;
-        } else {
-            response["status"] = "error";
-            response["message"] = "Неверный логин или пароль";
+            response["data"] = materialsArray;
         }
-    }
-    else if (action == "REGISTER_PARTNER") {
-        Partner p = Partner::fromJson(requestData);
-        bool success = DbManager::instance().registerPartner(p);
-        response["status"] = success ? "success" : "error";
-        if (!success) response["message"] = "Ошибка регистрации";
-    }
-    else if (action == "REGISTER_EMPLOYEE") {
-        Staff s = Staff::fromJson(requestData);
-        bool success = DbManager::instance().registerEmployee(s);
-        response["status"] = success ? "success" : "error";
-    }
-    else if (action == "UPDATE_EMPLOYEE_DATA") {
-        bool success = DbManager::instance().updateDataEmployee(requestData);
-        response["status"] = success ? "success" : "error";
-    }
-    else if (action == "UPDATE_PARTNER_DATA") {
-        bool success = DbManager::instance().updateDataPartner(requestData);
-        response["status"] = success ? "success" : "error";
-    }
-    else if (action == "UPDATE_STAFF_SECURITY") {
-        bool success = DbManager::instance().updateStaffSensitiveData(requestData);
-        response["status"] = success ? "success" : "error";
-    }
+        // Пример вызова расчетного метода (Модуль 4)
+        else if (action == "CALCULATE_PRODUCTION") {
+            QJsonObject params = request["data"].toObject();
+            int result = ProductionCalculator::calculateOutput(
+                params["prod_type"].toInt(),
+                params["mat_type"].toInt(),
+                params["mat_qty"].toInt(),
+                params["p1"].toDouble(),
+                params["p2"].toDouble()
+                );
+            response["status"] = (result != -1) ? "success" : "error";
+            response["result"] = result;
+        }
+        else if (action == "GET_MATERIAL_TYPES") {
+            response["status"] = "success";
+            response["data"] = DbManager::instance().getMaterialTypes();
+        }
+        else if (action == "ADD_MATERIAL") {
+            Material m = Material::fromJson(requestData);
+            bool success = DbManager::instance().addMaterial(m);
+            response["status"] = success ? "success" : "error";
+        }
+        else if (action == "UPDATE_MATERIAL") {
+            Material m = Material::fromJson(requestData);
+            bool success = DbManager::instance().updateMaterial(m);
+            response["status"] = success ? "success" : "error";
+        }
+        else if (action == "GET_SUPPLIERS") {
+            int matId = requestData["material_id"].toInt();
+            response["status"] = "success";
+            response["data"] = DbManager::instance().getSuppliersForMaterial(matId);
+        }
+        else if (action == "LOGIN") {
+            QJsonObject params = request["data"].toObject();
+            QString login = params["login"].toString();
+            QString pass = params["password"].toString();
 
-    // Ожидает JSON: { "id": 1, "password": "new_pass", "inn": "1234567890" }
-    else if (action == "UPDATE_PARTNER_SECURITY") {
-        bool success = DbManager::instance().updatePartnerSensitiveData(requestData);
-        response["status"] = success ? "success" : "error";
-    }
-    else {
-        response["status"] = "error";
-        response["message"] = "Неизвестная команда";
-    }
+            UserInfo info = DbManager::instance().authorizeUser(login, pass);
 
-    sendJson(response);
+            if (info.isAuthenticated) {
+                response["status"] = "success";
+                response["role"] = info.role;
+                response["user_id"] = info.id;
+                response["username"] = info.name;
+            } else {
+                response["status"] = "error";
+                response["message"] = "Неверный логин или пароль";
+            }
+        }
+        else if (action == "REGISTER_PARTNER") {
+            Partner p = Partner::fromJson(requestData);
+            bool success = DbManager::instance().registerPartner(p);
+            response["status"] = success ? "success" : "error";
+            if (!success) response["message"] = "Ошибка регистрации";
+        }
+        else if (action == "REGISTER_EMPLOYEE") {
+            Staff s = Staff::fromJson(requestData);
+            bool success = DbManager::instance().registerEmployee(s);
+            response["status"] = success ? "success" : "error";
+        }
+        else if (action == "UPDATE_EMPLOYEE_DATA") {
+            bool success = DbManager::instance().updateDataEmployee(requestData);
+            response["status"] = success ? "success" : "error";
+        }
+        else if (action == "UPDATE_PARTNER_DATA") {
+            bool success = DbManager::instance().updateDataPartner(requestData);
+            response["status"] = success ? "success" : "error";
+        }
+        else if (action == "UPDATE_STAFF_SECURITY") {
+            bool success = DbManager::instance().updateStaffSensitiveData(requestData);
+            response["status"] = success ? "success" : "error";
+        }
+
+        // Ожидает JSON: { "id": 1, "password": "new_pass", "inn": "1234567890" }
+        else if (action == "UPDATE_PARTNER_SECURITY") {
+            bool success = DbManager::instance().updatePartnerSensitiveData(requestData);
+            response["status"] = success ? "success" : "error";
+        }
+        else {
+            response["status"] = "error";
+            response["message"] = "Неизвестная команда";
+        }
+
+        sendJson(response);
+    }
 }
 
 void ClientHandler::sendJson(const QJsonObject &json)
