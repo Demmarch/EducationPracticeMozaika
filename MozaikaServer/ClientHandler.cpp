@@ -97,6 +97,38 @@ void ClientHandler::onReadyRead()
             response["status"] = "success";
             response["data"] = DbManager::instance().getSuppliersForMaterial(matId);
         }
+        else if (action == "GET_PRODUCTS") {
+            QList<Product> productList = DbManager::instance().getAllProducts();
+
+            QJsonArray prodArray;
+            for (const Product &p : productList) {
+                prodArray.append(p.toJson());
+            }
+
+            response["status"] = "success";
+            response["data"] = prodArray;
+        }
+        else if (action == "GET_PRODUCT_TYPES") {
+            response["status"] = "success";
+            response["data"] = DbManager::instance().getProductTypes();
+        }
+        else if (action == "ADD_PRODUCT") {
+            Product p = Product::fromJson(requestData);
+            bool success = DbManager::instance().addProduct(p);
+            response["status"] = success ? "success" : "error";
+            if (!success) response["message"] = "Ошибка добавления (возможно, дубликат артикула)";
+        }
+        else if (action == "UPDATE_PRODUCT") {
+            Product p = Product::fromJson(requestData);
+            bool success = DbManager::instance().updateProduct(p);
+            response["status"] = success ? "success" : "error";
+        }
+        else if (action == "DELETE_PRODUCT") {
+            int id = requestData["id"].toInt();
+            bool success = DbManager::instance().deleteProduct(id);
+            response["status"] = success ? "success" : "error";
+            if (!success) response["message"] = "Нельзя удалить продукт, используемый в заказах";
+        }
         else if (action == "LOGIN") {
             QJsonObject params = request["data"].toObject();
             QString login = params["login"].toString();

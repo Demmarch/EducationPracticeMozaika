@@ -28,6 +28,11 @@ public:
     // Продуктов
     QList<Product> getAllProducts();
 
+    QJsonArray getProductTypes();
+    bool addProduct(const Product &p);
+    bool updateProduct(const Product &p);
+    bool deleteProduct(int id);
+
     // Для выпадающего списка типов (Модуль 3)
     QJsonArray getMaterialTypes();
 

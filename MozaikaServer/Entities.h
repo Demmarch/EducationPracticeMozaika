@@ -57,6 +57,60 @@ struct Material {
     }
 };
 
+
+struct ProductType {
+    int id;
+    QString title;
+
+    QJsonObject toJson() const {
+        QJsonObject json;
+        json["id"] = id;
+        json["title"] = title;
+        return json;
+    }
+};
+
+// Обновите struct Product
+struct Product {
+    int id;
+    QString article;        // Артикул
+    QString title;          // Название
+    int typeId;             // ID типа
+    QString type;           // Название типа (для отображения)
+    double minCost;         // Мин. стоимость
+    QString description;    // Описание
+    QString image;          // Путь
+    QString imageBase64;    // Картинка
+
+    // Добавьте метод парсинга JSON
+    static Product fromJson(const QJsonObject &json) {
+        Product p;
+        p.id = json["id"].toInt();
+        p.article = json["article"].toString();
+        p.title = json["product_name"].toString();
+        p.typeId = json["product_type_id"].toInt();
+        p.minCost = json["min_cost_for_partner"].toDouble();
+        p.description = json["description"].toString();
+        p.image = json["image"].toString();
+        p.imageBase64 = json["image_base64"].toString();
+        return p;
+    }
+
+    QJsonObject toJson() const {
+        QJsonObject json;
+        json["id"] = id;
+        json["article"] = article;
+        json["product_name"] = title;
+        json["product_type_id"] = typeId; // Важно вернуть ID для редактирования
+        json["type_name"] = type;
+        json["min_cost_for_partner"] = minCost;
+        json["description"] = description;
+        json["image"] = image;
+        json["image_base64"] = imageBase64;
+        return json;
+    }
+};
+
 struct Partner {
     int id;
     int typeId;             // SQL: partner_type_id
@@ -172,71 +226,6 @@ struct Staff {
         s.login = json["login"].toString();
         s.password = json["password"].toString();
         return s;
-    }
-};
-
-struct Product {
-    int id;
-    QString article;
-    int typeId;             // SQL: product_type_id
-    QString typeName;       // Из JOIN product_type
-    QString name;           // SQL: product_name
-    QString description;
-    QString image;
-    double minCostForPartner; // SQL: min_cost_for_partner
-    QString packageSize;    // SQL: package_size
-    double netWeight;       // SQL: net_weight
-    double grossWeight;     // SQL: gross_weight
-    QString certificateScan;// SQL: certificate_scan
-    QString standardNumber; // SQL: standard_number
-    int productionTime;     // SQL: production_time
-    double costPrice;       // SQL: cost_price
-    int workshopNumber;     // SQL: workshop_number
-    int productionPeopleCount; // SQL: production_people_count
-
-    QJsonObject toJson() const {
-        QJsonObject json;
-        json["id"] = id;
-        json["article"] = article;
-        json["product_type_id"] = typeId;
-        json["type_name"] = typeName;
-        json["product_name"] = name;
-        json["description"] = description;
-        json["image"] = image;
-        json["min_cost_for_partner"] = minCostForPartner;
-        json["package_size"] = packageSize;
-        json["net_weight"] = netWeight;
-        json["gross_weight"] = grossWeight;
-        json["certificate_scan"] = certificateScan;
-        json["standard_number"] = standardNumber;
-        json["production_time"] = productionTime;
-        json["cost_price"] = costPrice;
-        json["workshop_number"] = workshopNumber;
-        json["production_people_count"] = productionPeopleCount;
-        return json;
-    }
-
-    static Product fromJson(const QJsonObject &json) {
-        Product p;
-        p.id = json["id"].toInt();
-        p.article = json["article"].toString();
-        p.typeId = json["product_type_id"].toInt();
-        if (json.contains("type_name")) p.typeName = json["type_name"].toString();
-
-        p.name = json["product_name"].toString();
-        p.description = json["description"].toString();
-        p.image = json["image"].toString();
-        p.minCostForPartner = json["min_cost_for_partner"].toDouble();
-        p.packageSize = json["package_size"].toString();
-        p.netWeight = json["net_weight"].toDouble();
-        p.grossWeight = json["gross_weight"].toDouble();
-        p.certificateScan = json["certificate_scan"].toString();
-        p.standardNumber = json["standard_number"].toString();
-        p.productionTime = json["production_time"].toInt();
-        p.costPrice = json["cost_price"].toDouble();
-        p.workshopNumber = json["workshop_number"].toInt();
-        p.productionPeopleCount = json["production_people_count"].toInt();
-        return p;
     }
 };
 

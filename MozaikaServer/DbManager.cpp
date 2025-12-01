@@ -122,14 +122,25 @@ QList<Material> DbManager::getAllMaterials() {
     return result;
 }
 
+QJsonArray DbManager::getProductTypes() {
+    QJsonArray result;
+    QSqlQuery query("SELECT id, type_name FROM product_type ORDER BY id ASC");
+    while (query.next()) {
+        QJsonObject item;
+        item["id"] = query.value("id").toInt();
+        item["title"] = query.value("type_name").toString();
+        result.append(item);
+    }
+    return result;
+}
+
 QList<Product> DbManager::getAllProducts() {
     QList<Product> result;
     if (!m_db.isOpen()) return result;
 
     QSqlQuery query;
-    // Объединяем product и product_type, чтобы получить название типа
     query.prepare("SELECT p.id, p.article, p.product_name, p.min_cost_for_partner, "
-                  "p.image, pt.type_name "
+                  "p.image, p.product_type_id, p.description, pt.type_name "
                   "FROM product p "
                   "JOIN product_type pt ON p.product_type_id = pt.id "
                   "ORDER BY p.product_name ASC");
@@ -142,7 +153,8 @@ QList<Product> DbManager::getAllProducts() {
             p.title = query.value("product_name").toString();
             p.minCost = query.value("min_cost_for_partner").toDouble();
             p.image = query.value("image").toString();
-            // Используем существующую функцию loadImageFromDisk из DbManager.cpp
+            p.typeId = query.value("product_type_id").toInt(); // Важно для Dropdown
+            p.description = query.value("description").toString();
             p.imageBase64 = loadImageFromDisk(p.image);
             p.type = query.value("type_name").toString();
 
@@ -154,7 +166,75 @@ QList<Product> DbManager::getAllProducts() {
     return result;
 }
 
-// === Добавление материала (Принимает Material) ===
+// Добавление продукта
+bool DbManager::addProduct(const Product &p) {
+    QString savedFileName = p.image;
+    if (!p.imageBase64.isEmpty()) {
+        savedFileName = saveImageToDisk(p.imageBase64, p.image);
+    }
+
+    QSqlQuery query;
+    query.prepare("INSERT INTO product (article, product_type_id, product_name, "
+                  "description, image, min_cost_for_partner) "
+                  "VALUES (:article, :type_id, :name, :desc, :img, :cost)");
+
+    query.bindValue(":article", p.article);
+    query.bindValue(":type_id", p.typeId);
+    query.bindValue(":name", p.title);
+    query.bindValue(":desc", p.description);
+    query.bindValue(":img", savedFileName);
+    query.bindValue(":cost", p.minCost);
+
+    if (!query.exec()) {
+        qDebug() << "Add Product Error:" << query.lastError().text();
+        return false;
+    }
+    return true;
+}
+
+// Обновление продукта
+bool DbManager::updateProduct(const Product &p) {
+    QString savedFileName = p.image;
+    if (!p.imageBase64.isEmpty()) {
+        savedFileName = saveImageToDisk(p.imageBase64, p.image);
+    }
+
+    QSqlQuery query;
+    query.prepare("UPDATE product SET article = :article, product_type_id = :type_id, "
+                  "product_name = :name, description = :desc, image = :img, "
+                  "min_cost_for_partner = :cost "
+                  "WHERE id = :id");
+
+    query.bindValue(":id", p.id);
+    query.bindValue(":article", p.article);
+    query.bindValue(":type_id", p.typeId);
+    query.bindValue(":name", p.title);
+    query.bindValue(":desc", p.description);
+    query.bindValue(":img", savedFileName);
+    query.bindValue(":cost", p.minCost);
+
+    if (!query.exec()) {
+        qDebug() << "Update Product Error:" << query.lastError().text();
+        return false;
+    }
+    return true;
+}
+
+// Удаление продукта
+bool DbManager::deleteProduct(int id) {
+    QSqlQuery query;
+    query.prepare("DELETE FROM product WHERE id = :id");
+    query.bindValue(":id", id);
+
+    if (!query.exec()) {
+        qDebug() << "Delete Product Error:" << query.lastError().text();
+        // Скорее всего ошибка FK (товар используется в заказах)
+        return false;
+    }
+    return true;
+}
+
+// Добавление материала (Принимает Material)
 bool DbManager::addMaterial(const Material &m) {
     QString savedFileName = m.image;
     if (!m.imageBase64.isEmpty()) {

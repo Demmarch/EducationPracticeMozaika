@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../models/user_model.dart';
 import '../models/material_model.dart';
 import '../services/socket_service.dart';
 import '../utils/styles.dart';
 import '../widgets/material_card.dart';
-import 'login_screen.dart';
+import '../widgets/app_drawer.dart';
 import 'material_edit_screen.dart';
 
 class MaterialListScreen extends StatefulWidget {
@@ -40,7 +38,6 @@ class _MaterialListScreenState extends State<MaterialListScreen> {
     
     if (response['status'] == 'success') {
       final List<dynamic> data = response['data'];
-      print("DEBUG DATA: $data");
       // Превращаем JSON массив в список объектов MaterialModel
       return data.map((json) => MaterialModel.fromJson(json)).toList();
     } else {
@@ -50,28 +47,13 @@ class _MaterialListScreenState extends State<MaterialListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<UserProvider>();
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Список материалов'),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
-        actions: [
-           // Показываем имя пользователя в AppBar
-           Center(child: Text("${user.name}  ", style: const TextStyle(fontWeight: FontWeight.bold))),
-           IconButton(
-            icon: const Icon(Icons.exit_to_app),
-            onPressed: () {
-              context.read<UserProvider>().logout();
-              Navigator.pushReplacement(
-                context, 
-                MaterialPageRoute(builder: (_) => const LoginScreen())
-              );
-            },
-          ),
-        ],
       ),
+      drawer: const AppDrawer(),
       body: Column(
         children: [
           // Поле поиска можно добавить позже, если останется время
