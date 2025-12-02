@@ -31,7 +31,7 @@ void ClientHandler::onReadyRead()
             continue;
         }
 
-        // 3. Парсим JSON
+        // Парсим JSON
         QJsonParseError parseError;
         QJsonDocument doc = QJsonDocument::fromJson(data, &parseError);
 
@@ -145,6 +145,24 @@ void ClientHandler::onReadyRead()
                 response["status"] = "error";
                 response["message"] = "Неверный логин или пароль";
             }
+        }
+        else if (action == "GET_PARTNERS") {
+            QList<Partner> partners = DbManager::instance().getAllPartners();
+            QJsonArray arr;
+            for (const Partner &p : partners) {
+                arr.append(p.toJson());
+            }
+            response["status"] = "success";
+            response["data"] = arr;
+        }
+        else if (action == "GET_EMPLOYEES") {
+            QList<Staff> staffList = DbManager::instance().getAllStaff();
+            QJsonArray arr;
+            for (const Staff &s : staffList) {
+                arr.append(s.toJson());
+            }
+            response["status"] = "success";
+            response["data"] = arr;
         }
         else if (action == "REGISTER_PARTNER") {
             Partner p = Partner::fromJson(requestData);

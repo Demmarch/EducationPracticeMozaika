@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  static const Color primary = Color(0xFF4A90E2); // Синий (корпоративный)
-  static const Color accent = Color(0xFF50E3C2);  // Акцентный
-  static const Color background = Color(0xFFF5F5F5);
+  static const Color primary = Color(0xFF546F94);
+  static const Color accent = Color(0xFFABCFCE);
+  static const Color background = Color(0xFFFFFFFF);
   static const Color textMain = Color(0xFF333333);
   static const Color error = Color(0xFFE74C3C);
 }

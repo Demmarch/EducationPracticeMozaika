@@ -127,6 +127,7 @@ struct Partner {
     QString salesLocations; // SQL: sales_locations
     QString login;
     QString password;
+    int discount;
 
     QJsonObject toJson() const {
         QJsonObject json;
@@ -145,6 +146,7 @@ struct Partner {
         json["sales_locations"] = salesLocations;
         json["login"] = login;
         json["password"] = password;
+        json["discount"] = discount;
         return json;
     }
 

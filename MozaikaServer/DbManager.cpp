@@ -418,6 +418,98 @@ bool DbManager::registerEmployee(const Staff &staff) {
     return true;
 }
 
+int DbManager::calculateDiscount(double totalSales) {
+    if (totalSales < 10000) return 0;
+    if (totalSales < 50000) return 5;
+    if (totalSales < 300000) return 10;
+    return 15;
+}
+
+QList<Partner> DbManager::getAllPartners() {
+    QList<Partner> result;
+    if (!m_db.isOpen()) return result;
+
+    QSqlQuery query;
+    // Сложный запрос:
+    // Берем партнеров и их типы.
+    // Джойним Заявки (request) и Продукты заявки (request_product).
+    // Считаем сумму (quantity * actual_price) через COALESCE (если продаж нет, будет 0).
+    query.prepare(
+        "SELECT p.id, p.legal_address, pt.type_name, p.partner_name, p.director_name, p.phone, p.email, p.rating, "
+        "COALESCE(SUM(rp.quantity * rp.actual_price), 0) as total_sales "
+        "FROM partner p "
+        "JOIN partner_type pt ON p.partner_type_id = pt.id "
+        "LEFT JOIN request r ON p.id = r.partner_id "
+        "LEFT JOIN request_product rp ON r.id = rp.request_id "
+        "GROUP BY p.id, pt.type_name, p.partner_name, p.director_name, p.phone, p.email, p.rating "
+        "ORDER BY p.partner_name ASC"
+        );
+
+    if (query.exec()) {
+        while (query.next()) {
+            Partner p;
+            p.id = query.value("id").toInt();
+            p.typeName = query.value("type_name").toString();
+            p.name = query.value("partner_name").toString();
+            p.director = query.value("director_name").toString();
+            p.phone = query.value("phone").toString();
+            p.email = query.value("email").toString();
+            p.rating = query.value("rating").toInt();
+            p.legalAddress = query.value("legal_address").toString();
+
+            double totalSales = query.value("total_sales").toDouble();
+            p.discount = calculateDiscount(totalSales); // Считаем скидку
+
+            result.append(p);
+        }
+    } else {
+        qDebug() << "SQL Error (getAllPartners):" << query.lastError().text();
+    }
+    return result;
+}
+
+QList<Staff> DbManager::getAllStaff() {
+    QList<Staff> result;
+    if (!m_db.isOpen()) return result;
+
+    QSqlQuery query;
+    // JOIN с таблицей должностей для получения названия должности
+    query.prepare("SELECT s.id, s.surname, s.name, s.patronymic, s.position_id, "
+                  "sp.position_name, s.birth_date, s.phone, s.bank_account, "
+                  "s.family_status, s.health_info, s.login, "
+                  "pgp_sym_decrypt(s.passport_details, 'Mozaika2025') as passport_details " // Расшифровываем паспорт
+                  "FROM staff s "
+                  "LEFT JOIN staff_position sp ON s.position_id = sp.id "
+                  "ORDER BY s.surname ASC");
+
+    if (query.exec()) {
+        while (query.next()) {
+            Staff s;
+            s.id = query.value("id").toInt();
+            s.surname = query.value("surname").toString();
+            s.name = query.value("name").toString();
+            s.patronymic = query.value("patronymic").toString();
+            s.positionId = query.value("position_id").toInt();
+            s.positionName = query.value("position_name").toString();
+            s.birthDate = query.value("birth_date").toDate();
+            s.phone = query.value("phone").toString();
+            s.bankAccount = query.value("bank_account").toString();
+            s.familyStatus = query.value("family_status").toString();
+            s.healthInfo = query.value("health_info").toString();
+            s.passportDetails = query.value("passport_details").toString(); // Уже расшифровано
+            s.login = query.value("login").toString();
+            // Пароль не отдаем в списке в открытом виде ради безопасности,
+            // или отдаем пустую строку. При сравнении на клиенте поле будет пустым.
+            s.password = "";
+
+            result.append(s);
+        }
+    } else {
+        qDebug() << "SQL Error (getAllStaff):" << query.lastError().text();
+    }
+    return result;
+}
+
 bool DbManager::updateDataEmployee(const QJsonObject &data) {
     if (!data.contains("id")) return false;
     int id = data["id"].toInt();

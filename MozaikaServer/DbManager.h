@@ -25,28 +25,32 @@ public:
 
     // Получение списка материалов (Модуля 2)
     QList<Material> getAllMaterials();
-    // Продуктов
+    // Для выпадающего списка типов (Модуль 3)
+    QJsonArray getMaterialTypes();
+    // Для добавления и редактирования (Модуль 3)
+    bool addMaterial(const Material &material);
+    bool updateMaterial(const Material &material);
+    // Для списка поставщиков (Модуль 4)
+    QJsonArray getSuppliersForMaterial(int materialId);
+    
+    // Продуктs
     QList<Product> getAllProducts();
-
     QJsonArray getProductTypes();
     bool addProduct(const Product &p);
     bool updateProduct(const Product &p);
     bool deleteProduct(int id);
 
-    // Для выпадающего списка типов (Модуль 3)
-    QJsonArray getMaterialTypes();
-
-    // Для добавления и редактирования (Модуль 3)
-    bool addMaterial(const Material &material);
-    bool updateMaterial(const Material &material);
-
-    // Для списка поставщиков (Модуль 4)
-    QJsonArray getSuppliersForMaterial(int materialId);
-
     // Регистрация/авторизация
     UserInfo authorizeUser(const QString &login, const QString &password);
     bool registerPartner(const Partner &partner);
     bool registerEmployee(const Staff &staff);
+
+    // Партнеры
+    QList<Partner> getAllPartners();
+    int calculateDiscount(double totalSales);
+
+    // Сотрудники
+    QList<Staff> getAllStaff();
 
     // Обновление данных сотрудника/партнера
     bool updateDataEmployee(const QJsonObject &data);
@@ -55,6 +59,7 @@ public:
     bool updateStaffSensitiveData(const QJsonObject &data);
     // Обновляет: login, password, inn
     bool updatePartnerSensitiveData(const QJsonObject &data);
+
 
 private:
     DbManager();

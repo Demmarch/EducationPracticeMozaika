@@ -3,7 +3,8 @@ import 'package:provider/provider.dart';
 import '../models/user_model.dart';
 import '../services/socket_service.dart';
 import '../utils/styles.dart';
-import 'material_list_screen.dart'; 
+import 'material_list_screen.dart';
+import 'partner_edit_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -40,7 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
 
-    // 1. Отправляем запрос на сервер
+    // Отправляем запрос на сервер
     final response = await _socketService.sendRequest('LOGIN', {
       'login': login,
       'password': password,
@@ -50,16 +51,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (!mounted) return;
 
-    // 2. Проверяем ответ
+    // Проверяем ответ
     if (response['status'] == 'success') {
-      // 3. Сохраняем данные пользователя в Provider
+      // Сохраняем данные пользователя в Provider
       final role = response['role']; // "manager" или "partner"
       final name = response['username'];
       final id = response['user_id'];
       
       context.read<UserProvider>().setUser(id, role, name);
 
-      // 4. Навигация в зависимости от роли
+      // Навигация в зависимости от роли
       // Пока направим всех на список материалов, но логику можно разделить
       Navigator.pushReplacement(
         context,
@@ -94,7 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Логотип (пока иконка, можно заменить на Image.asset) [cite: 72]
+                // Логотип (пока иконка, можно заменить на Image.asset)
                 const Icon(
                   Icons.grid_view_rounded, // Похоже на мозаику
                   size: 80,
@@ -151,9 +152,25 @@ class _LoginScreenState extends State<LoginScreen> {
                 
                 // Ссылка на регистрацию (для Партнеров)
                 TextButton(
-                  onPressed: () {
-                    // TODO: Переход на экран регистрации
-                    _showError("Функция регистрации в разработке");
+                  onPressed: () async {
+                    // Переходим на экран PartnerEditScreen, передавая partner: null.
+                    // Это активирует режим регистрации с полями логина/пароля.
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const PartnerEditScreen(partner: null),
+                      ),
+                    );
+
+                    // Если экран вернул true, значит регистрация прошла успешно
+                    if (result == true && mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Регистрация успешна! Теперь вы можете войти.'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    }
                   },
                   child: const Text('Стать партнером'),
                 ),

@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:mozaika_client/models/staff_model.dart';
+import 'package:mozaika_client/screens/staff_edit_screen.dart';
+import 'package:mozaika_client/screens/staff_list_screen.dart';
 import 'package:provider/provider.dart';
 import '../models/user_model.dart';
 import '../screens/login_screen.dart';
 import '../screens/material_list_screen.dart';
 import '../screens/product_list_screen.dart';
+import '../screens/partner_list_screen.dart';
+import '../screens/partner_edit_screen.dart';
+import '../models/partner_model.dart';
+import '../services/socket_service.dart';
 import '../utils/styles.dart';
 
 class AppDrawer extends StatelessWidget {
@@ -36,6 +43,82 @@ class AppDrawer extends StatelessWidget {
             ),
           ),
           
+          // Мой профиль для сотрудника
+          if (user.role == 'manager')
+            ListTile(
+              leading: const Icon(Icons.account_circle, color: AppColors.primary),
+              title: const Text('Мой профиль'),
+              onTap: () async {
+                Navigator.pop(context);
+                try {
+                  final socket = SocketService();
+                  final response = await socket.sendRequest('GET_EMPLOYEES');
+                  if (response['status'] == 'success') {
+                     final List data = response['data'];
+                     // Ищем по ID
+                     final myData = data.firstWhere((json) => json['id'] == user.id, orElse: () => null);
+
+                     if (myData != null && context.mounted) {
+                       final staffModel = StaffModel.fromJson(myData);
+                       Navigator.push(
+                         context,
+                         MaterialPageRoute(builder: (context) => StaffEditScreen(staff: staffModel)),
+                       );
+                     }
+                  }
+                } catch (e) {
+                  print(e);
+                }
+              },
+            ),
+          
+          if (user.role == 'manager')
+            _createDrawerItem(
+              context: context,
+              icon: Icons.badge,
+              text: 'Сотрудники',
+              targetScreen: const StaffListScreen(), // Не забудьте импорт
+            ),
+
+          
+          if (user.role == 'partner')
+            ListTile(
+              leading: const Icon(Icons.person, color: AppColors.primary),
+              title: const Text('Мой профиль'),
+              onTap: () async {
+                Navigator.pop(context); // Закрыть меню
+                try {
+                  final socket = SocketService();
+                  // Запрашиваем всех партнеров (так как API отдает список)
+                  final response = await socket.sendRequest('GET_PARTNERS');
+        
+                  if (response['status'] == 'success') {
+                    final List data = response['data'];
+                    // Ищем себя по ID
+                    final myData = data.firstWhere(
+                      (json) => json['id'] == user.id, 
+                      orElse: () => null
+                    );
+
+                    if (myData != null && context.mounted) {
+                      final partnerModel = PartnerModel.fromJson(myData);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PartnerEditScreen(partner: partnerModel),
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Ошибка загрузки профиля")),
+                      );
+                  }
+                }
+              } catch (e) {
+                print(e);
+              }
+            },
+          ),
           // Пункты меню
           Expanded(
             child: ListView(
@@ -53,6 +136,13 @@ class AppDrawer extends StatelessWidget {
                   text: 'Продукция',
                   targetScreen: const ProductListScreen(),
                 ),
+                _createDrawerItem(
+                  context: context,
+                  icon: Icons.people,
+                  text: 'Партнеры',
+                  targetScreen: PartnerListScreen()
+                ),
+                
               ],
             ),
           ),
