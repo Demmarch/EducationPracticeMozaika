@@ -1,6 +1,7 @@
 #ifndef ENTITIES_H
 #define ENTITIES_H
 
+#include "qjsonarray.h"
 #include <QString>
 #include <QJsonObject>
 #include <QDate>
@@ -228,6 +229,102 @@ struct Staff {
         s.login = json["login"].toString();
         s.password = json["password"].toString();
         return s;
+    }
+};
+
+// Добавить в Entities.h
+
+struct RequestItem {
+    int id;
+    int requestId;
+    int productId;
+    QString productName;    // Для отображения (JOIN)
+    QString productArticle; // Для отображения (JOIN)
+    QString productType;    // Для отображения (JOIN)
+    int quantity;
+    double actualPrice;     // Цена продажи
+    QDate plannedDate;      // Дата производства
+
+    QJsonObject toJson() const {
+        QJsonObject json;
+        json["id"] = id;
+        json["request_id"] = requestId;
+        json["product_id"] = productId;
+        json["product_name"] = productName;
+        json["article"] = productArticle;
+        json["type"] = productType;
+        json["quantity"] = quantity;
+        json["actual_price"] = actualPrice;
+        json["planned_date"] = plannedDate.toString(Qt::ISODate);
+        return json;
+    }
+
+    static RequestItem fromJson(const QJsonObject &json) {
+        RequestItem item;
+        item.id = json["id"].toInt(); // 0 если новый
+        item.requestId = json["request_id"].toInt();
+        item.productId = json["product_id"].toInt();
+        item.quantity = json["quantity"].toInt();
+        item.actualPrice = json["actual_price"].toDouble();
+        if (json.contains("planned_date")) {
+            item.plannedDate = QDate::fromString(json["planned_date"].toString(), Qt::ISODate);
+        }
+        return item;
+    }
+};
+
+struct Request {
+    int id;
+    int partnerId;
+    QString partnerName; // Для UI
+    int managerId;       // Может быть 0/null
+    QString managerName; // Для UI
+    QDateTime dateCreated;
+    QString status;
+    QDateTime paymentDate;
+
+    // Список товаров в заказе
+    QList<RequestItem> items;
+
+    QJsonObject toJson() const {
+        QJsonObject json;
+        json["id"] = id;
+        json["partner_id"] = partnerId;
+        json["partner_name"] = partnerName;
+        json["manager_id"] = managerId;
+        json["manager_name"] = managerName;
+        json["date_created"] = dateCreated.toString("yyyy-MM-dd HH:mm:ss");
+        json["status"] = status;
+        if (paymentDate.isValid()) {
+            json["payment_date"] = paymentDate.toString("yyyy-MM-dd HH:mm:ss");
+        }
+
+        QJsonArray itemsArr;
+        for (const auto &item : items) {
+            itemsArr.append(item.toJson());
+        }
+        json["items"] = itemsArr;
+        return json;
+    }
+
+    static Request fromJson(const QJsonObject &json) {
+        Request r;
+        r.id = json["id"].toInt();
+        r.partnerId = json["partner_id"].toInt();
+        r.managerId = json["manager_id"].toInt();
+        r.status = json["status"].toString();
+
+        if (json.contains("payment_date") && !json["payment_date"].toString().isEmpty()) {
+            r.paymentDate = QDateTime::fromString(json["payment_date"].toString(), "yyyy-MM-dd HH:mm:ss");
+        }
+
+        if (json.contains("items")) {
+            QJsonArray arr = json["items"].toArray();
+            for (const auto &val : arr) {
+                r.items.append(RequestItem::fromJson(val.toObject()));
+            }
+        }
+        return r;
     }
 };
 

@@ -36,9 +36,9 @@ class _PartnerEditScreenState extends State<PartnerEditScreen> {
   late TextEditingController _ratingController;
 
   // Контроллеры безопасности (только для Партнера)
-  final TextEditingController _loginController = TextEditingController();
+  late TextEditingController _loginController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _innController = TextEditingController();
+  late TextEditingController _innController = TextEditingController();
 
   @override
   void initState() {
@@ -50,6 +50,8 @@ class _PartnerEditScreenState extends State<PartnerEditScreen> {
     _emailController = TextEditingController(text: p?.email);
     _addressController = TextEditingController(text: p?.address); 
     _ratingController = TextEditingController(text: p?.rating.toString());
+    _innController = TextEditingController(text: p?.inn);
+    _loginController = TextEditingController(text: p?.login);
   }
 
   @override

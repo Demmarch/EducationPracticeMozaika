@@ -436,7 +436,8 @@ QList<Partner> DbManager::getAllPartners() {
     // Считаем сумму (quantity * actual_price) через COALESCE (если продаж нет, будет 0).
     query.prepare(
         "SELECT p.id, p.legal_address, pt.type_name, p.partner_name, p.director_name, p.phone, p.email, p.rating, "
-        "COALESCE(SUM(rp.quantity * rp.actual_price), 0) as total_sales "
+        "COALESCE(SUM(rp.quantity * rp.actual_price), 0) as total_sales, "
+        "pgp_sym_decrypt(p.inn, 'Mozaika2025') as inn, p.login "
         "FROM partner p "
         "JOIN partner_type pt ON p.partner_type_id = pt.id "
         "LEFT JOIN request r ON p.id = r.partner_id "
@@ -456,6 +457,8 @@ QList<Partner> DbManager::getAllPartners() {
             p.email = query.value("email").toString();
             p.rating = query.value("rating").toInt();
             p.legalAddress = query.value("legal_address").toString();
+            p.inn = query.value("inn").toString();
+            p.login = query.value("login").toString();
 
             double totalSales = query.value("total_sales").toDouble();
             p.discount = calculateDiscount(totalSales); // Считаем скидку
@@ -674,4 +677,216 @@ bool DbManager::updatePartnerSensitiveData(const QJsonObject &data)
         return false;
     }
     return true;
+}
+
+QList<Request> DbManager::getAllRequests() {
+    QList<Request> result;
+    if (!m_db.isOpen()) return result;
+
+    QSqlQuery query;
+    // LEFT JOIN с менеджерами, так как manager_id может быть NULL
+    query.prepare("SELECT r.id, r.date_created, r.status, r.payment_date, "
+                  "r.partner_id, p.partner_name, "
+                  "r.manager_id, s.surname, s.name "
+                  "FROM request r "
+                  "JOIN partner p ON r.partner_id = p.id "
+                  "LEFT JOIN staff s ON r.manager_id = s.id "
+                  "ORDER BY r.date_created DESC");
+
+    if (query.exec()) {
+        while (query.next()) {
+            Request r;
+            r.id = query.value("id").toInt();
+            r.dateCreated = query.value("date_created").toDateTime();
+            r.status = query.value("status").toString();
+            r.paymentDate = query.value("payment_date").toDateTime();
+
+            r.partnerId = query.value("partner_id").toInt();
+            r.partnerName = query.value("partner_name").toString();
+
+            r.managerId = query.value("manager_id").toInt();
+            if (r.managerId > 0) {
+                r.managerName = query.value("surname").toString() + " " + query.value("name").toString();
+            } else {
+                r.managerName = "Не назначен";
+            }
+
+            // Примечание: Мы НЕ грузим товары здесь, чтобы не перегружать список.
+            // Товары подгрузим отдельным запросом при открытии заказа.
+            result.append(r);
+        }
+    } else {
+        qDebug() << "SQL Error (getAllRequests):" << query.lastError().text();
+    }
+    return result;
+}
+
+QList<RequestItem> DbManager::getRequestItems(int requestId) {
+    QList<RequestItem> result;
+    QSqlQuery query;
+    query.prepare("SELECT rp.id, rp.quantity, rp.actual_price, rp.planned_production_date, "
+                  "rp.product_id, prod.product_name, prod.article, pt.type_name "
+                  "FROM request_product rp "
+                  "JOIN product prod ON rp.product_id = prod.id "
+                  "JOIN product_type pt ON prod.product_type_id = pt.id "
+                  "WHERE rp.request_id = :rid");
+
+    query.bindValue(":rid", requestId);
+
+    if (query.exec()) {
+        while (query.next()) {
+            RequestItem item;
+            item.id = query.value("id").toInt();
+            item.requestId = requestId;
+            item.quantity = query.value("quantity").toInt();
+            item.actualPrice = query.value("actual_price").toDouble();
+            item.plannedDate = query.value("planned_production_date").toDate();
+
+            item.productId = query.value("product_id").toInt();
+            item.productName = query.value("product_name").toString();
+            item.productArticle = query.value("article").toString();
+            item.productType = query.value("type_name").toString();
+
+            result.append(item);
+        }
+    }
+    return result;
+}
+
+bool DbManager::addRequest(Request &req) {
+    if (!m_db.transaction()) {
+        qDebug() << "Failed to start transaction";
+        return false;
+    }
+
+    // Вставка самой заявки
+    QDateTime dateCreated = QDateTime::currentDateTimeUtc().addSecs(3 * 3600);
+    req.dateCreated = dateCreated; // Обновляем структуру, чтобы вернуть актуальное время клиенту
+
+    QSqlQuery query;
+    // Заменили CURRENT_TIMESTAMP на :date
+    query.prepare("INSERT INTO request (partner_id, manager_id, status, date_created) "
+                  "VALUES (:pid, :mid, :status, :date) RETURNING id");
+
+    query.bindValue(":pid", req.partnerId);
+
+    if (req.managerId > 0) query.bindValue(":mid", req.managerId);
+    else query.bindValue(":mid", QVariant(QMetaType(QMetaType::Int)));
+
+    query.bindValue(":status", req.status.isEmpty() ? "Новая" : req.status);
+
+    // Биндим вычисленное время
+    query.bindValue(":date", dateCreated);
+
+    if (req.managerId > 0) query.bindValue(":mid", req.managerId);
+    else query.bindValue(":mid", QVariant(QMetaType(QMetaType::Int))); // NULL
+
+    query.bindValue(":status", req.status.isEmpty() ? "Новая" : req.status);
+
+    if (!query.exec() || !query.next()) {
+        qDebug() << "Error inserting request:" << query.lastError().text();
+        m_db.rollback();
+        return false;
+    }
+
+    int newRequestId = query.value(0).toInt();
+    req.id = newRequestId; // Обновляем ID в структуре
+
+    // Вставка товаров
+    if (!req.items.isEmpty()) {
+        QSqlQuery itemQuery;
+        itemQuery.prepare("INSERT INTO request_product (request_id, product_id, quantity, actual_price, planned_production_date) "
+                          "VALUES (:rid, :pid, :qty, :price, :date)");
+
+        for (const auto &item : req.items) {
+            itemQuery.bindValue(":rid", newRequestId);
+            itemQuery.bindValue(":pid", item.productId);
+            itemQuery.bindValue(":qty", item.quantity);
+            itemQuery.bindValue(":price", item.actualPrice);
+            if (item.plannedDate.isValid())
+                itemQuery.bindValue(":date", item.plannedDate);
+            else
+                itemQuery.bindValue(":date", QVariant(QMetaType(QMetaType::QDate))); // NULL
+
+            if (!itemQuery.exec()) {
+                qDebug() << "Error inserting item:" << itemQuery.lastError().text();
+                m_db.rollback();
+                return false;
+            }
+        }
+    }
+
+    return m_db.commit();
+}
+
+bool DbManager::updateRequest(const Request &req) {
+    if (!m_db.transaction()) return false;
+
+    // 1. Обновление шапки заказа
+    QSqlQuery query;
+    query.prepare("UPDATE request SET manager_id = :mid, status = :status, payment_date = :pdate "
+                  "WHERE id = :id");
+
+    if (req.managerId > 0) query.bindValue(":mid", req.managerId);
+    else query.bindValue(":mid", QVariant(QMetaType(QMetaType::Int)));
+
+    query.bindValue(":status", req.status);
+
+    if (req.paymentDate.isValid()) query.bindValue(":pdate", req.paymentDate);
+    else query.bindValue(":pdate", QVariant(QMetaType(QMetaType::QDate)));
+
+    query.bindValue(":id", req.id);
+
+    if (!query.exec()) {
+        qDebug() << "Error updating request header:" << query.lastError().text();
+        m_db.rollback();
+        return false;
+    }
+
+    // 2. Обновление товаров.
+    // Самый надежный способ при редактировании списка: удалить старые и записать новые.
+    // Это избавляет от сложной логики (что удалили, что добавили, что изменили).
+
+    QSqlQuery deleteQuery;
+    deleteQuery.prepare("DELETE FROM request_product WHERE request_id = :rid");
+    deleteQuery.bindValue(":rid", req.id);
+    if (!deleteQuery.exec()) {
+        qDebug() << "Error clearing old items:" << deleteQuery.lastError().text();
+        m_db.rollback();
+        return false;
+    }
+
+    // Вставка актуального списка (если он есть)
+    if (!req.items.isEmpty()) {
+        QSqlQuery itemQuery;
+        itemQuery.prepare("INSERT INTO request_product (request_id, product_id, quantity, actual_price, planned_production_date) "
+                          "VALUES (:rid, :pid, :qty, :price, :date)");
+
+        for (const auto &item : req.items) {
+            itemQuery.bindValue(":rid", req.id);
+            itemQuery.bindValue(":pid", item.productId);
+            itemQuery.bindValue(":qty", item.quantity);
+            itemQuery.bindValue(":price", item.actualPrice);
+            if (item.plannedDate.isValid())
+                itemQuery.bindValue(":date", item.plannedDate);
+            else
+                itemQuery.bindValue(":date", QVariant(QMetaType(QMetaType::QDate)));
+
+            if (!itemQuery.exec()) {
+                qDebug() << "Error inserting updated items:" << itemQuery.lastError().text();
+                m_db.rollback();
+                return false;
+            }
+        }
+    }
+
+    return m_db.commit();
+}
+
+bool DbManager::updateRequestStatus(int requestId, const QString &status) {
+    QSqlQuery query;
+    query.prepare("UPDATE request SET status = :status WHERE id = :id");
+    query.bindValue(":status", status);
+    query.bindValue(":id", requestId);
+    return query.exec();
 }

@@ -8,6 +8,8 @@ class PartnerModel {
   final String address;
   final int rating;
   final int discount;
+  final String inn;
+  final String login;
 
   PartnerModel({
     required this.id,
@@ -19,6 +21,8 @@ class PartnerModel {
     required this.address,
     required this.rating,
     required this.discount,
+    required this.inn,
+    required this.login
   });
 
   factory PartnerModel.fromJson(Map<String, dynamic> json) {
@@ -32,6 +36,8 @@ class PartnerModel {
       address: json['legal_address'],
       rating: json['rating'] ?? 0,
       discount: json['discount'] ?? 0,
+      login: json['login'] ?? '',
+      inn: json['inn'] ?? ''
     );
   }
 }

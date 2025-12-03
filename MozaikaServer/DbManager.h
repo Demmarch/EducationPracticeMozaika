@@ -60,6 +60,15 @@ public:
     // Обновляет: login, password, inn
     bool updatePartnerSensitiveData(const QJsonObject &data);
 
+    // Заказы
+    // Получает список всех заказов (обычно без деталей товаров для быстродействия списка)
+    QList<Request> getAllRequests();
+    // Получает товары конкретного заказа
+    QList<RequestItem> getRequestItems(int requestId);
+    // Изменение данных заказов
+    bool addRequest(Request &req);
+    bool updateRequest(const Request &req);
+    bool updateRequestStatus(int requestId, const QString &status);
 
 private:
     DbManager();

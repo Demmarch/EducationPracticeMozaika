@@ -193,6 +193,46 @@ void ClientHandler::onReadyRead()
             bool success = DbManager::instance().updatePartnerSensitiveData(requestData);
             response["status"] = success ? "success" : "error";
         }
+        else if (action == "GET_REQUESTS") {
+            // Получаем заголовки заказов
+            QList<Request> requests = DbManager::instance().getAllRequests();
+
+            QJsonArray arr;
+            for (const Request &r : requests) {
+                arr.append(r.toJson());
+            }
+            response["status"] = "success";
+            response["data"] = arr;
+        }
+        else if (action == "GET_REQUEST_ITEMS") {
+            // Получаем товары для конкретного заказа
+            int reqId = requestData["request_id"].toInt();
+            QList<RequestItem> items = DbManager::instance().getRequestItems(reqId);
+
+            QJsonArray arr;
+            for (const RequestItem &i : items) {
+                arr.append(i.toJson());
+            }
+            response["status"] = "success";
+            response["data"] = arr;
+        }
+        else if (action == "ADD_REQUEST") {
+            Request req = Request::fromJson(requestData);
+            bool success = DbManager::instance().addRequest(req);
+            response["status"] = success ? "success" : "error";
+            if (!success) response["message"] = "Ошибка создания заказа. Проверьте данные.";
+        }
+        else if (action == "UPDATE_REQUEST") {
+            Request req = Request::fromJson(requestData);
+            bool success = DbManager::instance().updateRequest(req);
+            response["status"] = success ? "success" : "error";
+        }
+        else if (action == "CHANGE_STATUS") {
+            int id = requestData["id"].toInt();
+            QString status = requestData["status"].toString();
+            bool success = DbManager::instance().updateRequestStatus(id, status);
+            response["status"] = success ? "success" : "error";
+        }
         else {
             response["status"] = "error";
             response["message"] = "Неизвестная команда";

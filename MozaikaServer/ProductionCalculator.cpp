@@ -30,7 +30,7 @@ int ProductionCalculator::calculateOutput(int productTypeId, int materialTypeId,
 
     if (materialPerUnitWithLoss == 0) return -1;
 
-    // 5. Расчет итогового количества продукции [cite: 76]
+    // 5. Расчет итогового количества продукции
     // Делим все сырье на расход для 1 шт и округляем вниз до целого
     int result = static_cast<int>(std::floor(materialQuantity / materialPerUnitWithLoss));
 

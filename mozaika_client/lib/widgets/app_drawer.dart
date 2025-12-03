@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mozaika_client/models/staff_model.dart';
+import 'package:mozaika_client/screens/production_calculator_screen.dart';
+import 'package:mozaika_client/screens/request_list_screen.dart';
 import 'package:mozaika_client/screens/staff_edit_screen.dart';
 import 'package:mozaika_client/screens/staff_list_screen.dart';
 import 'package:provider/provider.dart';
@@ -142,7 +144,19 @@ class AppDrawer extends StatelessWidget {
                   text: 'Партнеры',
                   targetScreen: PartnerListScreen()
                 ),
-                
+                _createDrawerItem(context: context,
+                  icon: Icons.list_alt,
+                  text: 'Заказы',
+                  targetScreen: const RequestListScreen()
+                ),
+                const Divider(),
+                _createDrawerItem(
+                  context: context,
+                  icon: Icons.calculate,
+                  text: 'Калькулятор производства',
+                  targetScreen: const ProductionCalculatorScreen(),
+                ),
+
               ],
             ),
           ),
