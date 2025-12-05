@@ -4,7 +4,7 @@
 ServerTests::ServerTests() {}
 ServerTests::~ServerTests() {}
 
-// --- ТЕСТ 1: Расчет скидок ---
+// Расчет скидок
 void ServerTests::testCalculateDiscount()
 {
     // Получаем инстанс DbManager
@@ -28,7 +28,7 @@ void ServerTests::testCalculateDiscount()
     QCOMPARE(db.calculateDiscount(1000000.0), 15);
 }
 
-// --- ТЕСТ 2: Калькулятор производства ---
+// Калькулятор производства
 void ServerTests::testProductionCalculator()
 {
     // Примерные данные из логики:
@@ -51,7 +51,7 @@ void ServerTests::testProductionCalculator()
     QCOMPARE(errorResult, -1);
 }
 
-// --- ТЕСТ 3: Сериализация JSON ---
+// Сериализация JSON
 void ServerTests::testMaterialJsonSerialization()
 {
     Material original;
