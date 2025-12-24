@@ -19,12 +19,10 @@ win32 {
 
 SOURCES += \
     main.cpp \
-    ProductionCalculator.cpp \ # Логика без зависимостей, можно раскомментировать позже
-    # DbManager.cpp \            # Требует полного переписывания
-    # ClientHandler.cpp          # Требует полного переписывания
+    ProductionCalculator.cpp \
+    DbManager.cpp \
 
 HEADERS += \
     Entities.h \
-    # DbManager.h \
+    DbManager.h \
     ProductionCalculator.h \
-    # ClientHandler.h
