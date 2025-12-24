@@ -1,0 +1,6 @@
+release
+debug
+Makefile
+Makefile.Debug
+Makefile.Release
+.qmake.stash
