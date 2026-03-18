@@ -13,11 +13,13 @@ SOURCES += \
     ProductionCalculator.cpp \
     main.cpp \
 
-# Заголовки
-
 HEADERS += \
     ClientHandler.h \
     DbManager.h \
     Entities.h \
     MyTcpServer.h \
     ProductionCalculator.h
+
+win32 {
+    QMAKE_POST_LINK += sript.bat $$shell_path($$OUT_PWD)
+}
